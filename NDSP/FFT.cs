@@ -26,19 +26,19 @@ namespace NDSP
         static Vector128<float> g_XMFour = Vector128.Create(4.0f);
         private static Vector128<float> g_XMPi = Vector128.Create(XM_PI);
         private static Vector128<float> g_XMHalfPi = Vector128.Create(XM_PIDIV2);
-        static Vector128<float> g_XMSinCoefficients0 = 
-            Vector128.Create( -0.16666667f, +0.0083333310f, -0.00019840874f, +2.7525562e-06f);
+        static Vector128<float> g_XMSinCoefficients0 =
+            Vector128.Create(-0.16666667f, +0.0083333310f, -0.00019840874f, +2.7525562e-06f);
         static Vector128<float> g_XMSinCoefficients1 =
-            Vector128.Create( -2.3889859e-08f, -0.16665852f /*Est1*/, +0.0083139502f /*Est2*/, -0.00018524670f /*Est3*/);
-        static Vector128<float> g_XMCosCoefficients0 = 
+            Vector128.Create(-2.3889859e-08f, -0.16665852f /*Est1*/, +0.0083139502f /*Est2*/, -0.00018524670f /*Est3*/);
+        static Vector128<float> g_XMCosCoefficients0 =
             Vector128.Create(-0.5f, +0.041666638f, -0.0013888378f, +2.4760495e-05f);
         static Vector128<float> g_XMCosCoefficients1 =
-            Vector128.Create( -2.6051615e-07f, -0.49992746f /*Est1*/, +0.041493919f /*Est2*/, -0.0012712436f /*Est3*/ );
+            Vector128.Create(-2.6051615e-07f, -0.49992746f /*Est1*/, +0.041493919f /*Est2*/, -0.0012712436f /*Est3*/ );
         private static Vector128<float> g_XMReciprocalTwoPi;
 
         public static Vector128<float> g_XMTwoPi { get; private set; }
 
-        public void FFT(Vector128<float>[] pReal,
+        public static void FFT(Vector128<float>[] pReal,
                         Vector128<float>[] pImaginary,
                         Vector128<float>[] pUnityTable,
                         uint uLength, uint uCount)
@@ -66,6 +66,8 @@ namespace NDSP
                                 pImaginary[n + uStride2],
                                 pImaginary[n + uStride3],
                                 pUnityTable,
+                                (n & uStage_vectors_mask),
+                                ((n >> 2) & uStage_vectors_mask),
                                 uStride, false);
             }
 
@@ -88,25 +90,46 @@ namespace NDSP
 
         }
 
-        private void FFT4(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
+        private static void FFT4(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
         {
             throw new NotImplementedException();
         }
 
-        private void FFT8(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
+        private static void FFT8(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
         {
             throw new NotImplementedException();
         }
 
-        private void FFT16(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
+        private static void FFT16(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint uCount)
         {
-            throw new NotImplementedException();
+                Vector128<float>[] UnityTable = {
+                Vector128.Create(1.0f, 1.0f, 1.0f, 1.0f ),
+                Vector128.Create(1.0f, 0.92387950f, 0.70710677f, 0.38268343f ),
+                Vector128.Create(1.0f, 0.70710677f, -4.3711388e-008f, -0.70710677f ),
+                Vector128.Create(1.0f, 0.38268343f, -0.70710677f, -0.92387950f),
+                Vector128.Create( -0.0f, -0.0f, -0.0f, -0.0f ),
+                Vector128.Create( -0.0f, -0.38268343f, -0.70710677f, -0.92387950f),
+                Vector128.Create( -0.0f, -0.70710677f, -1.0f, -0.70710677f),
+                Vector128.Create( -0.0f, -0.92387950f, -0.70710677f, 0.38268343f)
+            };
+
+
+            for (uint uIndex = 0; uIndex < uCount; ++uIndex)
+            {
+                ButterflyDIT4_4(pReal[uIndex * 4],
+                    pReal[uIndex * 4 + 1],
+                    pReal[uIndex * 4 + 2],
+                    pReal[uIndex * 4 + 3],
+                    pImaginary[uIndex * 4],
+                    pImaginary[uIndex * 4 + 1],
+                    pImaginary[uIndex * 4 + 2],
+                    pImaginary[uIndex * 4 + 3],
+                    UnityTable,
+                    0, 4,
+                    1, true);
+            }
         }
 
-        private void ButterflyDIT4_4(Vector128<float> vector1281, Vector128<float> vector1282, Vector128<float> vector1283, Vector128<float> vector1284, Vector128<float> vector1285, Vector128<float> vector1286, Vector128<float> vector1287, Vector128<float> vector1288, Vector128<float>[] pUnityTable, uint uStride, bool v)
-        {
-            throw new NotImplementedException();
-        }
 
         private Vector128<float> XMVectorReplicate(float Value)
         {
@@ -114,7 +137,7 @@ namespace NDSP
             return Vector128.Create(Value);
         }
 
-        private void vmulComplex(Vector128<float> r1, Vector128<float> i1, Vector128<float> r2, Vector128<float> i2)
+        private static void vmulComplex(Vector128<float> r1, Vector128<float> i1, Vector128<float> r2, Vector128<float> i2)
         {
             Vector128<float> vr1r2 = XMVectorMultiply(r1, r2);
             Vector128<float> vr1i2 = XMVectorMultiply(r1, i2);
@@ -125,28 +148,28 @@ namespace NDSP
 
 
 
-        private static Vector128<float> XMVectorAdd(Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorAdd(Vector128<float> v0, Vector128<float> v1)
         {
-            return Sse2.Add(v1, v2);
+            return Sse2.Add(v0, v1);
         }
 
-        private static Vector128<float> XMVectorMultiply(Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorMultiply(Vector128<float> v0, Vector128<float> v1)
         {
-            return Sse2.Multiply(v1, v2);
+            return Sse2.Multiply(v0, v1);
         }
 
-        private static Vector128<float> XMVectorFuseMultiplyAdd(Vector128<float> v1, Vector128<float> v2, Vector128<float> v3)
+        private static Vector128<float> XMVectorFuseMultiplyAdd(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
         {
-            return Sse2.Add(v3, Sse2.Multiply(v1, v2));
+            return Sse2.Add(v2, Sse2.Multiply(v0, v1));
         }
 
-        private static Vector128<float> XMVectorFuseMultiplySubtract(Vector128<float> v1, Vector128<float> v2, Vector128<float> v3)
+        private static Vector128<float> XMVectorFuseMultiplySubtract(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
         {
-            return Sse2.Subtract(v3, Sse2.Multiply(v1, v2));
+            return Sse2.Subtract(v2, Sse2.Multiply(v0, v1));
         }
-        private static Vector128<float> XMVectorSubtract(Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorSubtract(Vector128<float> v0, Vector128<float> v1)
         {
-            return Sse2.Subtract(v1, v2);
+            return Sse2.Subtract(v0, v1);
         }
 
         private static void ButterflyDIT4_1(Vector128<float> r1, Vector128<float> i1)
@@ -185,39 +208,101 @@ namespace NDSP
             i1 = XMVectorFuseMultiplyAdd(iZrWiZrW, vDFT4SignBits3, iTempL);
 
         }
+
+        private static void ButterflyDIT4_4(Vector128<float> r0,
+                                            Vector128<float> r1,
+                                            Vector128<float> r2,
+                                            Vector128<float> r3,
+                                            Vector128<float> i0,
+                                            Vector128<float> i1,
+                                            Vector128<float> i2,
+                                            Vector128<float> i3,
+                                            Vector128<float>[] UnityTable,
+                                            uint uReal,
+                                            uint uImaginary,
+                                            uint uStride,
+                                            bool fLast)
+        {
+            // calculating Temp
+            Vector128<float> rTemp0 = XMVectorAdd(r0, r2);
+            Vector128<float> iTemp0 = XMVectorAdd(i0, i2);
+
+            Vector128<float> rTemp2 = XMVectorAdd(r1, r3);
+            Vector128<float> iTemp2 = XMVectorAdd(i1, i3);
+
+            Vector128<float> rTemp1 = XMVectorSubtract(r0, r2);
+            Vector128<float> iTemp1 = XMVectorSubtract(i0, i2);
+
+            Vector128<float> rTemp3 = XMVectorSubtract(r1, r3);
+            Vector128<float> iTemp3 = XMVectorSubtract(i1, i3);
+
+            Vector128<float> rTemp4 = XMVectorAdd(rTemp0, rTemp2);
+            Vector128<float> iTemp4 = XMVectorAdd(iTemp0, iTemp2);
+
+            Vector128<float> rTemp5 = XMVectorAdd(rTemp1, iTemp3);
+            Vector128<float> iTemp5 = XMVectorSubtract(iTemp1, rTemp3);
+
+            Vector128<float> rTemp6 = XMVectorSubtract(rTemp0, rTemp2);
+            Vector128<float> iTemp6 = XMVectorSubtract(iTemp0, iTemp2);
+
+            Vector128<float> rTemp7 = XMVectorSubtract(rTemp1, iTemp3);
+            Vector128<float> iTemp7 = XMVectorAdd(iTemp1, rTemp3);
+
+            // calculating Result
+            // vmulComplex(rTemp0, iTemp0, rTemp0, iTemp0, pUnityTableReal[0], pUnityTableImaginary[0]); // first one is always trivial
+            vmulComplex(rTemp5, iTemp5, UnityTable[uReal + uStride], UnityTable[uImaginary + uStride]);
+            vmulComplex(rTemp6, iTemp6, UnityTable[uReal + uStride * 2], UnityTable[uImaginary + uStride * 2]);
+            vmulComplex(rTemp7, iTemp7, UnityTable[uReal + uStride * 3], UnityTable[uImaginary + uStride * 3]);
+
+            if (fLast)
+            {
+                ButterflyDIT4_1(rTemp4, iTemp4);
+                ButterflyDIT4_1(rTemp5, iTemp5);
+                ButterflyDIT4_1(rTemp6, iTemp6);
+                ButterflyDIT4_1(rTemp7, iTemp7);
+            }
+
+            r0 = rTemp4; i0 = iTemp4;
+            r1 = rTemp5; i1 = iTemp5;
+            r2 = rTemp6; i2 = iTemp6;
+            r3 = rTemp7; i3 = iTemp7;
+        }
+
+
+
         private static byte Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
             return (byte)((fp3 << 6) | (fp2 << 4) | (fp1 << 2) | (fp0));
         }
 
-        private static Vector128<float> XMVectorSwizzle0101(Vector128<float> v1)
+        private static Vector128<float> XMVectorSwizzle0101(Vector128<float> v0)
         {
-            return Sse2.MoveLowToHigh(v1, v1);
+            return Sse2.MoveLowToHigh(v0, v0);
         }
 
-        private static Vector128<float> XMVectorSwizzle2121(Vector128<float> rZrWiZiW)
+        private static Vector128<float> XMVectorSwizzle2121(Vector128<float> v0)
         {
-            throw new NotImplementedException();
+            return XM_PERMUTE_PS(v0, Shuffle(2, 1, 2, 1));
         }
 
-        private static Vector128<float> XMVectorSwizzle0303(Vector128<float> v1)
+        private static Vector128<float> XMVectorSwizzle0303(Vector128<float> v0)
         {
-            return v1;
+            return XM_PERMUTE_PS(v0, Shuffle(0, 3, 0, 3));
         }
 
-        private static Vector128<float> XMVectorPermute2367(Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorPermute2367(Vector128<float> v0, Vector128<float> v1)
         {
-            return v1;
+            return Sse2.UnpackHigh(v0, v1);
         }
 
-        private static Vector128<float> XMVectorSwizzle2233(Vector128<float> v1)
+        private static Vector128<float> XMVectorSwizzle2233(Vector128<float> v0)
         {
-            return Sse2.UnpackHigh(v1, v1);
+            return Sse2.UnpackHigh(v0, v0);
         }
 
-        private static Vector128<float> XMVectorSwizzle0011(Vector128<float> v1)
+        private static Vector128<float> XMVectorSwizzle0011(Vector128<float> v0)
         {
-            return Sse2.UnpackLow(v1, v1);
+            return Sse2.UnpackLow(v0, v0);
         }
 
         public static void FFTInitializeUnityTable(Vector128<float>[] UnityTable, uint uLength)
@@ -267,7 +352,7 @@ namespace NDSP
             Vector128<float> vResult = XMVectorMultiply(Angles, g_XMReciprocalTwoPi);
 
             vResult = XMVectorRound(vResult);
-            return XMVectorFuseMultiplyAdd( vResult, g_XMTwoPi, Angles);
+            return XMVectorFuseMultiplyAdd(vResult, g_XMTwoPi, Angles);
         }
 
         private static Vector128<float> XMVectorMultiply(Vector128<float> angles, object g_XMReciprocalTwoPi)
@@ -286,7 +371,7 @@ namespace NDSP
             R2 = Sse2.AndNot(mask, V);
             R1 = Sse2.And(R1, mask);
 
-            return Sse2.Xor(R1,R2);
+            return Sse2.Xor(R1, R2);
         }
         static Vector128<float> XM_PERMUTE_PS(Vector128<float> v, byte c)
         {
