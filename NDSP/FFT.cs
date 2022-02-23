@@ -85,14 +85,17 @@ namespace NDSP
             }
             else if (uLength == 4 * 4)
             {
-                FFT4(pReal, pImaginary, uCount * 4);
+                FFT4(ref pReal, pImaginary, uCount * 4);
             }
 
         }
 
-        private static void FFT4(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
+        static public void FFT4(ref Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint uCount)
         {
-            throw new NotImplementedException();
+            for (uint uIndex = 0; uIndex < uCount; ++uIndex)
+            {
+                ButterflyDIT4_1(ref pReal[uIndex], pImaginary[uIndex]);
+            }
         }
 
         private static void FFT8(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint v)
@@ -142,7 +145,7 @@ namespace NDSP
             Vector128<float> vr1r2 = XMVectorMultiply(r1, r2);
             Vector128<float> vr1i2 = XMVectorMultiply(r1, i2);
             r1 = XMVectorFuseMultiplySubtract(i1, i2, vr1r2);
-            i1 = XMVectorFuseMultiplyAdd(i1, i2, vr1i2);
+            i1 = XMVectorMultiplyAdd(i1, i2, vr1i2);
 
         }
 
@@ -158,7 +161,7 @@ namespace NDSP
             return Sse2.Multiply(v0, v1);
         }
 
-        private static Vector128<float> XMVectorFuseMultiplyAdd(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorMultiplyAdd(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
         {
             return Sse2.Add(v2, Sse2.Multiply(v0, v1));
         }
@@ -172,7 +175,7 @@ namespace NDSP
             return Sse2.Subtract(v0, v1);
         }
 
-        private static void ButterflyDIT4_1(Vector128<float> r1, Vector128<float> i1)
+        private static void ButterflyDIT4_1(ref Vector128<float> r1, Vector128<float> i1)
         {
             // sign constants for radix-4 butterflies
             Vector128<float> vDFT4SignBits1 = Vector128.Create(1.0f, -1.0f, 1.0f, -1.0f);
@@ -188,10 +191,10 @@ namespace NDSP
             Vector128<float> i1L = XMVectorSwizzle0011(i1);
             Vector128<float> i1H = XMVectorSwizzle2233(i1);
 
-            Vector128<float> rTemp = XMVectorFuseMultiplyAdd(r1H, vDFT4SignBits1, r1L);
-            Vector128<float> iTemp = XMVectorFuseMultiplyAdd(i1H, vDFT4SignBits1, i1L);
+            Vector128<float> rTemp = XMVectorMultiplyAdd(r1H, vDFT4SignBits1, r1L);
+            Vector128<float> iTemp = XMVectorMultiplyAdd(i1H, vDFT4SignBits1, i1L);
 
-            // calculating Result
+            // calculating Result 
             // [rTempZ|rTempW|iTempZ|iTempW]
             Vector128<float> rZrWiZiW = XMVectorPermute2367(rTemp, iTemp);
             // [rTempZ|iTempW|rTempZ|iTempW]
@@ -204,8 +207,8 @@ namespace NDSP
             Vector128<float> rTempL = XMVectorSwizzle0101(rTemp);
             Vector128<float> iTempL = XMVectorSwizzle0101(iTemp);
 
-            r1 = XMVectorFuseMultiplyAdd(rZiWrZiW, vDFT4SignBits2, rTempL);
-            i1 = XMVectorFuseMultiplyAdd(iZrWiZrW, vDFT4SignBits3, iTempL);
+            r1 = XMVectorMultiplyAdd(rZiWrZiW, vDFT4SignBits2, rTempL);
+            i1 = XMVectorMultiplyAdd(iZrWiZrW, vDFT4SignBits3, iTempL);
 
         }
 
@@ -254,13 +257,13 @@ namespace NDSP
             vmulComplex(rTemp6, iTemp6, UnityTable[uReal + uStride * 2], UnityTable[uImaginary + uStride * 2]);
             vmulComplex(rTemp7, iTemp7, UnityTable[uReal + uStride * 3], UnityTable[uImaginary + uStride * 3]);
 
-            if (fLast)
-            {
-                ButterflyDIT4_1(rTemp4, iTemp4);
-                ButterflyDIT4_1(rTemp5, iTemp5);
-                ButterflyDIT4_1(rTemp6, iTemp6);
-                ButterflyDIT4_1(rTemp7, iTemp7);
-            }
+            //if (fLast)
+            //{
+            //    ButterflyDIT4_1(rTemp4, iTemp4);
+            //    ButterflyDIT4_1(rTemp5, iTemp5);
+            //    ButterflyDIT4_1(rTemp6, iTemp6);
+            //    ButterflyDIT4_1(rTemp7, iTemp7);
+            //}
 
             r0 = rTemp4; i0 = iTemp4;
             r1 = rTemp5; i1 = iTemp5;
@@ -272,7 +275,7 @@ namespace NDSP
 
         private static byte Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
-            return (byte)((fp3 << 6) | (fp2 << 4) | (fp1 << 2) | (fp0));
+            return (byte)((fp0 << 6) | (fp1 << 4) | (fp2 << 2) | (fp3));
         }
 
         private static Vector128<float> XMVectorSwizzle0101(Vector128<float> v0)
@@ -352,7 +355,7 @@ namespace NDSP
             Vector128<float> vResult = XMVectorMultiply(Angles, g_XMReciprocalTwoPi);
 
             vResult = XMVectorRound(vResult);
-            return XMVectorFuseMultiplyAdd(vResult, g_XMTwoPi, Angles);
+            return XMVectorMultiplyAdd(vResult, g_XMTwoPi, Angles);
         }
 
         private static Vector128<float> XMVectorMultiply(Vector128<float> angles, object g_XMReciprocalTwoPi)
@@ -400,19 +403,19 @@ namespace NDSP
             Vector128<float> vConstantsB = XM_PERMUTE_PS(SC1, Shuffle(0, 0, 0, 0));
             Vector128<float> SC0 = g_XMSinCoefficients0;
             Vector128<float> vConstants = XM_PERMUTE_PS(SC0, Shuffle(3, 3, 3, 3));
-            Vector128<float> Result = XMVectorFuseMultiplyAdd(vConstantsB, x2, vConstants);
+            Vector128<float> Result = XMVectorMultiplyAdd(vConstantsB, x2, vConstants);
 
 
             vConstants = XM_PERMUTE_PS(SC0, Shuffle(2, 2, 2, 2));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
             vConstants = XM_PERMUTE_PS(SC0, Shuffle(1, 1, 1, 1));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
             vConstants = XM_PERMUTE_PS(SC0, Shuffle(0, 0, 0, 0));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
-            Result = XMVectorFuseMultiplyAdd(Result, x2, g_XMOne);
+            Result = XMVectorMultiplyAdd(Result, x2, g_XMOne);
             Result = Sse2.Multiply(Result, x);
             vSin = Result;
 
@@ -420,19 +423,19 @@ namespace NDSP
             vConstantsB = XM_PERMUTE_PS(CC1, Shuffle(0, 0, 0, 0));
             Vector128<float> CC0 = g_XMCosCoefficients0;
             vConstants = XM_PERMUTE_PS(CC0, Shuffle(3, 3, 3, 3));
-            Result = XMVectorFuseMultiplyAdd(vConstantsB, x2, vConstants);
+            Result = XMVectorMultiplyAdd(vConstantsB, x2, vConstants);
 
 
             vConstants = XM_PERMUTE_PS(CC0, Shuffle(2, 2, 2, 2));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
             vConstants = XM_PERMUTE_PS(CC0, Shuffle(1, 1, 1, 1));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
             vConstants = XM_PERMUTE_PS(CC0, Shuffle(0, 0, 0, 0));
-            Result = XMVectorFuseMultiplyAdd(Result, x2, vConstants);
+            Result = XMVectorMultiplyAdd(Result, x2, vConstants);
 
-            Result = XMVectorFuseMultiplyAdd(Result, x2, g_XMOne);
+            Result = XMVectorMultiplyAdd(Result, x2, g_XMOne);
             Result = Sse2.Multiply(Result, sign);
             vCos = Result;
         }
