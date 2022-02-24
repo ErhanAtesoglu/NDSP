@@ -275,7 +275,7 @@ namespace NDSP
 
         private static byte Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
-            return (byte)((fp0 << 6) | (fp1 << 4) | (fp2 << 2) | (fp3));
+            return (byte)((fp3 << 6) | (fp2 << 4) | (fp1 << 2) | (fp0));
         }
 
         private static Vector128<float> XMVectorSwizzle0101(Vector128<float> v0)
@@ -285,12 +285,12 @@ namespace NDSP
 
         private static Vector128<float> XMVectorSwizzle2121(Vector128<float> v0)
         {
-            return XM_PERMUTE_PS(v0, Shuffle(2, 1, 2, 1));
+            return XM_PERMUTE_PS(v0, Shuffle(1, 2, 1, 2));
         }
 
         private static Vector128<float> XMVectorSwizzle0303(Vector128<float> v0)
         {
-            return XM_PERMUTE_PS(v0, Shuffle(0, 3, 0, 3));
+            return XM_PERMUTE_PS(v0, Shuffle(3, 0, 3, 0));
         }
 
         private static Vector128<float> XMVectorPermute2367(Vector128<float> v0, Vector128<float> v1)
