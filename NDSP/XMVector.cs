@@ -94,6 +94,7 @@ namespace NDSP
             vCos = Result;
         }
 
+   
         private static byte Shuffle(byte fp3, byte fp2, byte fp1, byte fp0)
         {
             return (byte)((fp3 << 6) | (fp2 << 4) | (fp1 << 2) | (fp0));
@@ -211,8 +212,17 @@ namespace NDSP
         {
             Vector128<float> vr1r2 = XMVectorMultiply(r1, r2);
             Vector128<float> vr1i2 = XMVectorMultiply(r1, i2);
-            r1 = XMVectorFuseMultiplySubtract(i1, i2, vr1r2);
+            r1 = XMVectorNegativeMultiplySubtract(i1, i2, vr1r2);
             i1 = XMVectorMultiplyAdd(i1, i2, vr1i2);
+
+        }
+
+        private static void vmulComplex(out Vector128<float> rResult, out Vector128<float> iResult, Vector128<float> r1, Vector128<float> i1, Vector128<float> r2, Vector128<float> i2)
+        {
+            Vector128<float> vr1r2 = XMVectorMultiply(r1, r2);
+            Vector128<float> vr1i2 = XMVectorMultiply(r1, i2);
+            rResult = XMVectorNegativeMultiplySubtract(i1, i2, vr1r2);
+            iResult = XMVectorMultiplyAdd(i1, i2, vr1i2);
 
         }
 
@@ -233,7 +243,7 @@ namespace NDSP
             return Sse2.Add(v2, Sse2.Multiply(v0, v1));
         }
 
-        private static Vector128<float> XMVectorFuseMultiplySubtract(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
+        private static Vector128<float> XMVectorNegativeMultiplySubtract(Vector128<float> v0, Vector128<float> v1, Vector128<float> v2)
         {
             return Sse2.Subtract(v2, Sse2.Multiply(v0, v1));
         }
