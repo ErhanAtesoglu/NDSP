@@ -63,12 +63,12 @@ namespace NDSP
             }
             else if (uLength == 4 * 4)
             {
-                FFT4(ref pReal, ref pImaginary, uCount * 4);
+                FFT4(pReal, pImaginary, uCount * 4);
             }
 
         }
 
-        static public void FFT4(ref Vector128<float>[] pReal, ref Vector128<float>[] pImaginary, uint uCount)
+        static public void FFT4(Vector128<float>[] pReal, Vector128<float>[] pImaginary, uint uCount)
         {
             for (uint uIndex = 0; uIndex < uCount; ++uIndex)
             {
@@ -94,7 +94,7 @@ namespace NDSP
                 ButterflyDIT4_1(ref oddsR, ref oddsI);
                 ButterflyDIT4_1(ref evensR, ref evensI);
 
-                
+
                 //vmulComplex(out Vector128<float> r, out Vector128<float> i, oddsR, oddsI, wr1, wi1);
                 //pReal[0] = XMVectorAdd(evensR, r);
                 //pImaginary[0] = XMVectorAdd(evensI, i);
