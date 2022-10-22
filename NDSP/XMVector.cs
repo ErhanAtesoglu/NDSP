@@ -117,7 +117,7 @@ namespace NDSP
 
         private static Vector128<float> XMVectorPermute2367(Vector128<float> v0, Vector128<float> v1)
         {
-            return Sse2.UnpackHigh(v0, v1);
+            return Vector128.Create(v0.GetElement(2), v0.GetElement(3), v1.GetElement(2), v1.GetElement(3));
         }
 
         private static Vector128<float> XMVectorSwizzle2233(Vector128<float> v0)
@@ -217,7 +217,7 @@ namespace NDSP
 
         }
 
-        private static void vmulComplex(out Vector128<float> rResult, out Vector128<float> iResult, Vector128<float> r1, Vector128<float> i1, Vector128<float> r2, Vector128<float> i2)
+        private static void vmulComplex(ref Vector128<float> rResult, ref Vector128<float> iResult, Vector128<float> r1, Vector128<float> i1, Vector128<float> r2, Vector128<float> i2)
         {
             Vector128<float> vr1r2 = XMVectorMultiply(r1, r2);
             Vector128<float> vr1i2 = XMVectorMultiply(r1, i2);

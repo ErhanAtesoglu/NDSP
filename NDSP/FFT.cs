@@ -94,14 +94,15 @@ namespace NDSP
                 ButterflyDIT4_1(ref oddsR, ref oddsI);
                 ButterflyDIT4_1(ref evensR, ref evensI);
 
+                Vector128<float> real = Vector128.Create(0.0f);
+                Vector128<float> img = Vector128.Create(0.0f); 
+                vmulComplex(ref real , ref img, oddsR, oddsI, wr1, wi1);
+                pReal[i] = XMVectorAdd(evensR, real);
+                pImaginary[i] = XMVectorAdd(evensI, img);
 
-                //vmulComplex(out Vector128<float> r, out Vector128<float> i, oddsR, oddsI, wr1, wi1);
-                //pReal[0] = XMVectorAdd(evensR, r);
-                //pImaginary[0] = XMVectorAdd(evensI, i);
-
-                //vmulComplex(out r, out i, oddsR, oddsI, wr2, wi2);
-                //pReal[1] = XMVectorAdd(evensR, r);
-                //pImaginary[1] = XMVectorAdd(evensI, i);
+                vmulComplex(ref real, ref img, oddsR, oddsI, wr2, wi2);
+                pReal[i + 1] = XMVectorAdd(evensR, real);
+                pImaginary[i + 1] = XMVectorAdd(evensI, img);
             }
         }
 
